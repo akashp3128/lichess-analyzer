@@ -70,6 +70,7 @@ model MoveAnalysis {
   evalLoss        Float
   classification  String
   square          String
+  piece           String   @default("P")
   timeSpent       Float?
   timeRemaining   Float?
   inTimeTrouble   Boolean  @default(false)
@@ -79,4 +80,5 @@ model MoveAnalysis {
 
   @@index([gameId])
   @@index([square])
+  @@index([piece])
 }

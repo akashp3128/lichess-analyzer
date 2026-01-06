@@ -67,6 +67,7 @@ export async function GET(
       allMoves.map((m) => ({
         square: m.square,
         classification: m.classification,
+        piece: m.piece,
       }))
     );
 

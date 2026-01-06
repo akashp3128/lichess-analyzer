@@ -66,6 +66,8 @@ export interface AnalysisResult {
   avgMoveTime: number | null;
 }
 
+export type ChessPiece = 'P' | 'N' | 'B' | 'R' | 'Q' | 'K';
+
 export interface MoveAnalysisResult {
   moveNumber: number;
   move: string;
@@ -75,6 +77,7 @@ export interface MoveAnalysisResult {
   evalLoss: number;
   classification: MoveClassification;
   square: string;
+  piece: ChessPiece;
   timeSpent: number | null;
   timeRemaining: number | null;
   inTimeTrouble: boolean;
@@ -106,11 +109,19 @@ export interface OpeningStats {
   winRate: number;
 }
 
+export interface PieceErrorCount {
+  piece: ChessPiece;
+  mistakes: number;
+  blunders: number;
+  total: number;
+}
+
 export interface SquareHeatmapData {
   square: string;
   mistakeCount: number;
   blunderCount: number;
   totalErrors: number;
+  byPiece: PieceErrorCount[];
 }
 
 export interface RatingHistoryPoint {

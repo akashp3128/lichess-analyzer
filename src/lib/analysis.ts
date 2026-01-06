@@ -4,6 +4,7 @@ import {
   MoveAnalysisResult,
   MoveClassification,
   StockfishEvaluation,
+  ChessPiece,
 } from '@/types';
 import { StockfishEngine } from './stockfish';
 
@@ -38,6 +39,22 @@ export function getSquareFromMove(move: string): string {
     return match[match.length - 1];
   }
   return 'unknown';
+}
+
+export function getPieceFromMove(san: string): ChessPiece {
+  // Castling is a king move
+  if (san.startsWith('O-O')) return 'K';
+
+  // Check first character for piece indicator
+  const firstChar = san[0];
+  if (firstChar === 'N') return 'N';
+  if (firstChar === 'B') return 'B';
+  if (firstChar === 'R') return 'R';
+  if (firstChar === 'Q') return 'Q';
+  if (firstChar === 'K') return 'K';
+
+  // If no piece indicator, it's a pawn move
+  return 'P';
 }
 
 // Parse clock time from PGN comment like "{ [%clk 0:05:23] }"
@@ -194,6 +211,7 @@ export async function analyzeGame(
         evalLoss,
         classification,
         square: move.to,
+        piece: getPieceFromMove(move.san),
         timeSpent: null,
         timeRemaining,
         inTimeTrouble,
@@ -289,16 +307,21 @@ export function aggregateOpeningStats(
 }
 
 export function aggregateMistakeSquares(
-  moves: Array<{ square: string; classification: string }>
+  moves: Array<{ square: string; classification: string; piece?: string }>
 ): Array<{
   square: string;
   mistakeCount: number;
   blunderCount: number;
   totalErrors: number;
+  byPiece: Array<{ piece: ChessPiece; mistakes: number; blunders: number; total: number }>;
 }> {
   const squareMap = new Map<
     string,
-    { mistakeCount: number; blunderCount: number }
+    {
+      mistakeCount: number;
+      blunderCount: number;
+      pieceMap: Map<string, { mistakes: number; blunders: number }>;
+    }
   >();
 
   for (const move of moves) {
@@ -313,22 +336,38 @@ export function aggregateMistakeSquares(
     const existing = squareMap.get(move.square) || {
       mistakeCount: 0,
       blunderCount: 0,
+      pieceMap: new Map(),
     };
+
+    const piece = move.piece || 'P';
+    const pieceData = existing.pieceMap.get(piece) || { mistakes: 0, blunders: 0 };
 
     if (move.classification === 'mistake') {
       existing.mistakeCount++;
+      pieceData.mistakes++;
     } else {
       existing.blunderCount++;
+      pieceData.blunders++;
     }
 
+    existing.pieceMap.set(piece, pieceData);
     squareMap.set(move.square, existing);
   }
 
   return Array.from(squareMap.entries())
-    .map(([square, counts]) => ({
+    .map(([square, data]) => ({
       square,
-      ...counts,
-      totalErrors: counts.mistakeCount + counts.blunderCount,
+      mistakeCount: data.mistakeCount,
+      blunderCount: data.blunderCount,
+      totalErrors: data.mistakeCount + data.blunderCount,
+      byPiece: Array.from(data.pieceMap.entries())
+        .map(([piece, counts]) => ({
+          piece: piece as ChessPiece,
+          mistakes: counts.mistakes,
+          blunders: counts.blunders,
+          total: counts.mistakes + counts.blunders,
+        }))
+        .sort((a, b) => b.total - a.total),
     }))
     .sort((a, b) => b.totalErrors - a.totalErrors);
 }
