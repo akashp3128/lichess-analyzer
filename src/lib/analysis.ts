@@ -8,11 +8,12 @@ import {
 } from '@/types';
 import { StockfishEngine } from './stockfish';
 
+// Thresholds in pawns (1 pawn = 100 centipawns)
 const THRESHOLDS = {
-  INACCURACY: 0.2,
-  MISTAKE: 0.5,
-  BLUNDER: 1.0,
-  GOOD_MOVE: 0.2,
+  GOOD_MOVE: 0.1,    // <10cp loss = good move
+  INACCURACY: 0.3,   // 10-30cp loss = inaccuracy
+  MISTAKE: 0.8,      // 30-80cp loss = mistake
+  BLUNDER: 0.8,      // >80cp loss = blunder
 };
 
 export function classifyMove(
@@ -151,14 +152,12 @@ export async function analyzeGame(
     const evalAfter = await engine.evaluate(fenAfter, 12);
 
     if (isPlayerMove) {
-      const evalBeforeFromPlayer = isWhiteMove
-        ? evalBefore.evaluation
-        : -evalBefore.evaluation;
-      const evalAfterFromPlayer = isWhiteMove
-        ? -evalAfter.evaluation
-        : evalAfter.evaluation;
-
-      const evalLoss = Math.max(0, evalBeforeFromPlayer - evalAfterFromPlayer);
+      // Stockfish returns eval from side-to-move's perspective
+      // evalLoss = advantage before - advantage after (from player's perspective)
+      // Before move: it's player's turn, so eval is from player's POV
+      // After move: it's opponent's turn, so we negate to get player's POV
+      // Formula: evalLoss = evalBefore - (-evalAfter) = evalBefore + evalAfter
+      const evalLoss = Math.max(0, evalBefore.evaluation + evalAfter.evaluation);
       totalEvalLoss += evalLoss;
       playerMoveCount++;
 
