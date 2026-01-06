@@ -18,6 +18,7 @@ import { EndgameChart } from '@/components/charts/EndgameChart';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
 import { PuzzleTrainer } from '@/components/dashboard/PuzzleTrainer';
 import { ProgressTracker } from '@/components/charts/ProgressTracker';
+import { PeerBenchmark } from '@/components/charts/PeerBenchmark';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -218,6 +219,16 @@ function DashboardContent() {
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
                 <h2 className="mb-4 text-lg font-semibold">Progress Tracking</h2>
                 <ProgressTracker username={username} />
+              </div>
+            )}
+
+            {analyzedCount >= 3 && (
+              <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Peer Comparison</h2>
+                <p className="mb-4 text-sm text-slate-400">
+                  See how you compare to players at your rating level
+                </p>
+                <PeerBenchmark username={username} />
               </div>
             )}
 
