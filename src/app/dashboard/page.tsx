@@ -11,6 +11,7 @@ import { RatingChart } from '@/components/charts/RatingChart';
 import { OpeningStatsChart } from '@/components/charts/OpeningStatsChart';
 import { MistakeHeatmap } from '@/components/charts/MistakeHeatmap';
 import { PhaseStatsChart } from '@/components/charts/PhaseStatsChart';
+import { TimeTroubleChart } from '@/components/charts/TimeTroubleChart';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
 
 function DashboardContent() {
@@ -221,6 +222,13 @@ function DashboardContent() {
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
                 <h2 className="mb-4 text-lg font-semibold">Performance by Phase</h2>
                 <PhaseStatsChart data={stats.phaseStats} />
+              </div>
+            )}
+
+            {stats && stats.timeTroubleStats && (
+              <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Time Trouble Analysis</h2>
+                <TimeTroubleChart data={stats.timeTroubleStats} />
               </div>
             )}
 

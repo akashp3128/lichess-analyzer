@@ -37,10 +37,13 @@ export function OpeningStatsChart({ data, games = [] }: OpeningStatsChartProps) 
     draws: o.draws,
   }));
 
-  const handleBarClick = (entry: typeof chartData[0]) => {
-    const opening = data.find(o => o.eco === entry.eco || o.name === entry.fullName);
-    if (opening) {
-      setSelectedOpening(opening);
+  const handleBarClick = (index: number) => {
+    const entry = chartData[index];
+    if (entry) {
+      const opening = data.find(o => o.eco === entry.eco || o.name === entry.fullName);
+      if (opening) {
+        setSelectedOpening(opening);
+      }
     }
   };
 
@@ -91,7 +94,6 @@ export function OpeningStatsChart({ data, games = [] }: OpeningStatsChartProps) 
               dataKey="winRate"
               radius={[0, 4, 4, 0]}
               className="cursor-pointer"
-              onClick={(data) => handleBarClick(data)}
             >
               {chartData.map((entry, index) => (
                 <Cell
@@ -103,6 +105,8 @@ export function OpeningStatsChart({ data, games = [] }: OpeningStatsChartProps) 
                       ? '#f59e0b'
                       : '#ef4444'
                   }
+                  onClick={() => handleBarClick(index)}
+                  style={{ cursor: 'pointer' }}
                 />
               ))}
             </Bar>

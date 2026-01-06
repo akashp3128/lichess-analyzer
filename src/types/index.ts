@@ -76,6 +76,8 @@ export interface MoveAnalysisResult {
   classification: MoveClassification;
   square: string;
   timeSpent: number | null;
+  timeRemaining: number | null;
+  inTimeTrouble: boolean;
 }
 
 export type MoveClassification =
@@ -127,6 +129,17 @@ export interface PhaseStats {
   totalMoves: number;
 }
 
+export interface TimeTroubleStats {
+  normalMoves: number;
+  normalAccuracy: number;
+  normalBlunders: number;
+  timeTroubleMoves: number;
+  timeTroubleAccuracy: number;
+  timeTroubleBlunders: number;
+  accuracyDrop: number;
+  timeTroubleThreshold: number;
+}
+
 export interface UserStats {
   totalGames: number;
   analyzedGames: number;
@@ -139,6 +152,7 @@ export interface UserStats {
   openingStats: OpeningStats[];
   ratingHistory: RatingHistoryPoint[];
   phaseStats: PhaseStats[];
+  timeTroubleStats: TimeTroubleStats | null;
 }
 
 export interface AnalysisProgress {

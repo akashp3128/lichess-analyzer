@@ -40,6 +40,51 @@ export function getSquareFromMove(move: string): string {
   return 'unknown';
 }
 
+// Parse clock time from PGN comment like "{ [%clk 0:05:23] }"
+export function parseClockTime(comment: string): number | null {
+  const match = comment.match(/\[%clk (\d+):(\d+):(\d+)\]/);
+  if (!match) return null;
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const seconds = parseInt(match[3], 10);
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+// Extract clock times from PGN for each move
+export function extractClockTimes(pgn: string): Map<number, { white: number | null; black: number | null }> {
+  const clockTimes = new Map<number, { white: number | null; black: number | null }>();
+
+  // Match moves with their clock comments
+  // Format: 1. e4 { [%clk 0:10:00] } e5 { [%clk 0:10:00] }
+  const movePattern = /(\d+)\.\s*(\S+)\s*(?:\{([^}]*)\})?\s*(?:(\S+)\s*(?:\{([^}]*)\})?)?/g;
+
+  let match;
+  while ((match = movePattern.exec(pgn)) !== null) {
+    const moveNum = parseInt(match[1], 10);
+    const whiteComment = match[3] || '';
+    const blackComment = match[5] || '';
+
+    clockTimes.set(moveNum, {
+      white: parseClockTime(whiteComment),
+      black: parseClockTime(blackComment),
+    });
+  }
+
+  return clockTimes;
+}
+
+// Parse initial time from TimeControl header (e.g., "600+0" = 600 seconds)
+export function parseInitialTime(pgn: string): number | null {
+  const match = pgn.match(/\[TimeControl "(\d+)\+?\d*"\]/);
+  if (!match) return null;
+  return parseInt(match[1], 10);
+}
+
+// Determine if in time trouble (less than 10% of initial time remaining)
+export function isInTimeTrouble(timeRemaining: number, initialTime: number, threshold = 0.1): boolean {
+  return timeRemaining < initialTime * threshold;
+}
+
 export async function analyzeGame(
   pgn: string,
   playerColor: 'white' | 'black',
@@ -54,6 +99,10 @@ export async function analyzeGame(
 
   const history = chess.history({ verbose: true });
   chess.reset();
+
+  // Extract clock times and initial time for time trouble tracking
+  const clockTimes = extractClockTimes(pgn);
+  const initialTime = parseInitialTime(pgn);
 
   const moveAnalyses: MoveAnalysisResult[] = [];
   let totalEvalLoss = 0;
@@ -126,8 +175,18 @@ export async function analyzeGame(
           break;
       }
 
+      // Get time remaining for this move
+      const moveNum = Math.floor(i / 2) + 1;
+      const clockData = clockTimes.get(moveNum);
+      const timeRemaining = clockData
+        ? (isWhiteMove ? clockData.white : clockData.black)
+        : null;
+      const inTimeTrouble = timeRemaining !== null && initialTime !== null
+        ? isInTimeTrouble(timeRemaining, initialTime)
+        : false;
+
       moveAnalyses.push({
-        moveNumber: Math.floor(i / 2) + 1,
+        moveNumber: moveNum,
         move: move.san,
         isWhite: isWhiteMove,
         evaluation: evalAfter.evaluation,
@@ -136,6 +195,8 @@ export async function analyzeGame(
         classification,
         square: move.to,
         timeSpent: null,
+        timeRemaining,
+        inTimeTrouble,
       });
     }
 
@@ -347,4 +408,53 @@ export function aggregatePhaseStats(
       totalMoves: data.totalMoves,
     };
   });
+}
+
+export function aggregateTimeTroubleStats(
+  moves: Array<{
+    evalLoss: number;
+    classification: string;
+    inTimeTrouble: boolean;
+  }>
+): {
+  normalMoves: number;
+  normalAccuracy: number;
+  normalBlunders: number;
+  timeTroubleMoves: number;
+  timeTroubleAccuracy: number;
+  timeTroubleBlunders: number;
+  accuracyDrop: number;
+  timeTroubleThreshold: number;
+} | null {
+  const normalMoves = moves.filter(m => !m.inTimeTrouble);
+  const timeTroubleMoves = moves.filter(m => m.inTimeTrouble);
+
+  // Need at least some moves in each category for meaningful stats
+  if (normalMoves.length === 0 || timeTroubleMoves.length < 2) {
+    return null;
+  }
+
+  const calcAccuracy = (moveList: typeof moves) => {
+    if (moveList.length === 0) return 0;
+    const totalLoss = moveList.reduce((sum, m) => sum + m.evalLoss, 0);
+    const acpl = (totalLoss / moveList.length) * 100;
+    return Math.max(0, Math.round((100 - acpl * 0.5) * 10) / 10);
+  };
+
+  const countBlunders = (moveList: typeof moves) =>
+    moveList.filter(m => m.classification === 'blunder' || m.classification === 'missed_mate').length;
+
+  const normalAccuracy = calcAccuracy(normalMoves);
+  const timeTroubleAccuracy = calcAccuracy(timeTroubleMoves);
+
+  return {
+    normalMoves: normalMoves.length,
+    normalAccuracy,
+    normalBlunders: countBlunders(normalMoves),
+    timeTroubleMoves: timeTroubleMoves.length,
+    timeTroubleAccuracy,
+    timeTroubleBlunders: countBlunders(timeTroubleMoves),
+    accuracyDrop: Math.round((normalAccuracy - timeTroubleAccuracy) * 10) / 10,
+    timeTroubleThreshold: 60, // seconds (10% of 600s = 60s for 10+0)
+  };
 }

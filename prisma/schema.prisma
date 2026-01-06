@@ -71,6 +71,8 @@ model MoveAnalysis {
   classification  String
   square          String
   timeSpent       Float?
+  timeRemaining   Float?
+  inTimeTrouble   Boolean  @default(false)
 
   gameId          String
   game            Game     @relation(fields: [gameId], references: [id])
