@@ -16,6 +16,7 @@ import { WeaknessReport } from '@/components/charts/WeaknessReport';
 import { TiltChart } from '@/components/charts/TiltChart';
 import { EndgameChart } from '@/components/charts/EndgameChart';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
+import { PuzzleTrainer } from '@/components/dashboard/PuzzleTrainer';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -260,6 +261,16 @@ function DashboardContent() {
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
                 <h2 className="mb-4 text-lg font-semibold">Mistake Heatmap</h2>
                 <MistakeHeatmap data={stats.mostCommonMistakeSquares} />
+              </div>
+            )}
+
+            {analyzedCount > 0 && (
+              <div className="rounded-xl border border-amber-500/30 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Practice Your Mistakes</h2>
+                <p className="mb-4 text-sm text-slate-400">
+                  Train on positions where you made errors to avoid repeating them
+                </p>
+                <PuzzleTrainer username={username} />
               </div>
             )}
 

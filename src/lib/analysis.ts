@@ -215,6 +215,7 @@ export async function analyzeGame(
         timeSpent: null,
         timeRemaining,
         inTimeTrouble,
+        fen: fenBefore,
       });
     }
 

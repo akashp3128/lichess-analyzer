@@ -79,7 +79,11 @@ export async function POST(request: NextRequest) {
           evalLoss: move.evalLoss,
           classification: move.classification,
           square: move.square,
+          piece: move.piece,
           timeSpent: move.timeSpent,
+          timeRemaining: move.timeRemaining,
+          inTimeTrouble: move.inTimeTrouble,
+          fen: move.fen,
           gameId,
         })),
       });

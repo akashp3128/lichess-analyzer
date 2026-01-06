@@ -74,6 +74,7 @@ model MoveAnalysis {
   timeSpent       Float?
   timeRemaining   Float?
   inTimeTrouble   Boolean  @default(false)
+  fen             String?
 
   gameId          String
   game            Game     @relation(fields: [gameId], references: [id])
@@ -81,4 +82,5 @@ model MoveAnalysis {
   @@index([gameId])
   @@index([square])
   @@index([piece])
+  @@index([classification])
 }

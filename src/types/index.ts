@@ -81,6 +81,21 @@ export interface MoveAnalysisResult {
   timeSpent: number | null;
   timeRemaining: number | null;
   inTimeTrouble: boolean;
+  fen: string;
+}
+
+export interface Puzzle {
+  id: string;
+  gameId: string;
+  fen: string;
+  solution: string;
+  moveNumber: number;
+  yourMove: string;
+  evalLoss: number;
+  classification: string;
+  isWhiteToMove: boolean;
+  opening?: string;
+  playedAt: Date;
 }
 
 export type MoveClassification =
