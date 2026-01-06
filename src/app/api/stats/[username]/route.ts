@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { aggregateOpeningStats, aggregateMistakeSquares, aggregatePhaseStats, aggregateTimeTroubleStats, generateWeaknessReport, analyzeTilt } from '@/lib/analysis';
+import { aggregateOpeningStats, aggregateMistakeSquares, aggregatePhaseStats, aggregateTimeTroubleStats, generateWeaknessReport, analyzeTilt, analyzeEndgames } from '@/lib/analysis';
 import { UserStats } from '@/types';
 
 export async function GET(
@@ -121,6 +121,16 @@ export async function GET(
       }))
     );
 
+    const endgameReport = analyzeEndgames(
+      user.games.map((g) => ({
+        id: g.id,
+        pgn: g.pgn,
+        result: g.result as 'win' | 'loss' | 'draw',
+        accuracy: g.analysis?.accuracy || null,
+        moveCount: g.moves.length,
+      }))
+    );
+
     const stats: UserStats = {
       totalGames: user.games.length,
       analyzedGames: analyzedGames.length,
@@ -139,6 +149,7 @@ export async function GET(
       timeTroubleStats,
       weaknessReport,
       tiltStats,
+      endgameReport,
     };
 
     return NextResponse.json(stats);

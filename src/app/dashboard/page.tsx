@@ -14,6 +14,7 @@ import { PhaseStatsChart } from '@/components/charts/PhaseStatsChart';
 import { TimeTroubleChart } from '@/components/charts/TimeTroubleChart';
 import { WeaknessReport } from '@/components/charts/WeaknessReport';
 import { TiltChart } from '@/components/charts/TiltChart';
+import { EndgameChart } from '@/components/charts/EndgameChart';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
 
 function DashboardContent() {
@@ -245,6 +246,13 @@ function DashboardContent() {
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
                 <h2 className="mb-4 text-lg font-semibold">Tilt Analysis</h2>
                 <TiltChart data={stats.tiltStats} />
+              </div>
+            )}
+
+            {stats && stats.endgameReport && (
+              <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Endgame Performance</h2>
+                <EndgameChart data={stats.endgameReport} />
               </div>
             )}
 

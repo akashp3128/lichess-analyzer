@@ -166,6 +166,7 @@ export interface UserStats {
   timeTroubleStats: TimeTroubleStats | null;
   weaknessReport: WeaknessReport;
   tiltStats: TiltStats | null;
+  endgameReport: EndgameReport | null;
 }
 
 export interface AnalysisProgress {
@@ -191,6 +192,45 @@ export interface WeaknessReport {
   strengths: WeaknessInsight[];
   overallScore: number;
   gamesAnalyzed: number;
+}
+
+export type EndgameType =
+  | 'pawn'           // K+P vs K or K+P vs K+P
+  | 'rook'           // Rook endings
+  | 'queen'          // Queen endings
+  | 'bishop'         // Bishop endings
+  | 'knight'         // Knight endings
+  | 'minor_piece'    // B vs N, B+N, etc.
+  | 'rook_minor'     // R + minor vs R + minor
+  | 'queen_rook'     // Q vs R type
+  | 'complex'        // Multiple piece types
+  | 'mating_attack'  // Game ended in middlegame with attack
+  | 'unknown';
+
+export interface EndgameStats {
+  type: string;
+  typeName: string;
+  games: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  avgAccuracy: number;
+}
+
+export interface EndgameSummary {
+  type: string;
+  typeName: string;
+  winRate: number;
+  games: number;
+}
+
+export interface EndgameReport {
+  endgameStats: EndgameStats[];
+  bestEndgame: EndgameSummary | null;
+  worstEndgame: EndgameSummary | null;
+  totalEndgames: number;
+  reachedEndgameRate: number; // % of games that reached endgame
 }
 
 export interface TiltStats {

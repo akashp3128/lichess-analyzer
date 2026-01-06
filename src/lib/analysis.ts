@@ -869,3 +869,286 @@ export function analyzeTilt(games: TiltAnalysisGame[]): {
     },
   };
 }
+
+// Endgame Classification
+type EndgameType =
+  | 'pawn'
+  | 'rook'
+  | 'queen'
+  | 'bishop'
+  | 'knight'
+  | 'minor_piece'
+  | 'rook_minor'
+  | 'queen_rook'
+  | 'complex'
+  | 'mating_attack'
+  | 'unknown';
+
+const ENDGAME_NAMES: Record<EndgameType, string> = {
+  pawn: 'Pawn Endgame',
+  rook: 'Rook Endgame',
+  queen: 'Queen Endgame',
+  bishop: 'Bishop Endgame',
+  knight: 'Knight Endgame',
+  minor_piece: 'Minor Piece Endgame',
+  rook_minor: 'Rook + Minor Piece',
+  queen_rook: 'Queen vs Rook',
+  complex: 'Complex Endgame',
+  mating_attack: 'Middlegame Finish',
+  unknown: 'Unknown',
+};
+
+interface PieceCount {
+  queens: number;
+  rooks: number;
+  bishops: number;
+  knights: number;
+  pawns: number;
+}
+
+function countPiecesFromPgn(pgn: string): { white: PieceCount; black: PieceCount; moveCount: number } {
+  // Start with initial piece counts
+  const white: PieceCount = { queens: 1, rooks: 2, bishops: 2, knights: 2, pawns: 8 };
+  const black: PieceCount = { queens: 1, rooks: 2, bishops: 2, knights: 2, pawns: 8 };
+
+  // Extract just the moves part (remove headers)
+  const movesMatch = pgn.match(/\n\n([\s\S]*?)(?:\s*(?:1-0|0-1|1\/2-1\/2|\*))?$/);
+  if (!movesMatch) return { white, black, moveCount: 0 };
+
+  const movesText = movesMatch[1];
+
+  // Count captures by looking for 'x' in moves
+  const moves = movesText.match(/[NBRQK]?[a-h]?[1-8]?x[a-h][1-8](?:=[NBRQ])?/g) || [];
+
+  // This is a simplified estimation - we track captures
+  let moveCount = 0;
+  const moveNumbers = movesText.match(/\d+\./g);
+  if (moveNumbers) {
+    moveCount = moveNumbers.length;
+  }
+
+  // Count remaining pieces from common patterns
+  // For simplicity, estimate based on game length and captures
+  const captureCount = moves.length;
+
+  // Rough estimation: distribute captures between pieces
+  // In reality we'd need to parse the full game
+  const avgCaptures = Math.floor(captureCount / 2);
+
+  // Reduce piece counts roughly based on captures
+  if (avgCaptures > 0) {
+    // Pawns are most commonly captured
+    white.pawns = Math.max(0, white.pawns - Math.floor(avgCaptures * 0.4));
+    black.pawns = Math.max(0, black.pawns - Math.floor(avgCaptures * 0.4));
+
+    // Minor pieces next
+    if (avgCaptures > 3) {
+      white.knights = Math.max(0, white.knights - 1);
+      black.knights = Math.max(0, black.knights - 1);
+    }
+    if (avgCaptures > 5) {
+      white.bishops = Math.max(0, white.bishops - 1);
+      black.bishops = Math.max(0, black.bishops - 1);
+    }
+    if (avgCaptures > 8) {
+      white.rooks = Math.max(0, white.rooks - 1);
+      black.rooks = Math.max(0, black.rooks - 1);
+    }
+    if (avgCaptures > 12) {
+      white.queens = 0;
+      black.queens = 0;
+    }
+  }
+
+  return { white, black, moveCount };
+}
+
+function classifyEndgame(white: PieceCount, black: PieceCount, moveCount: number): EndgameType {
+  const totalWhitePieces = white.queens + white.rooks + white.bishops + white.knights;
+  const totalBlackPieces = black.queens + black.rooks + black.bishops + black.knights;
+  const totalPieces = totalWhitePieces + totalBlackPieces;
+
+  // If game ended early (before move 30), it's likely a middlegame finish
+  if (moveCount < 30 && totalPieces > 4) {
+    return 'mating_attack';
+  }
+
+  // Pure pawn endgame (no pieces except kings and pawns)
+  if (totalPieces === 0) {
+    return 'pawn';
+  }
+
+  // Queen endgames
+  if ((white.queens > 0 || black.queens > 0) &&
+      white.rooks === 0 && black.rooks === 0 &&
+      white.bishops === 0 && black.bishops === 0 &&
+      white.knights === 0 && black.knights === 0) {
+    return 'queen';
+  }
+
+  // Rook endgames (only rooks, no queens or minor pieces)
+  if (white.queens === 0 && black.queens === 0 &&
+      (white.rooks > 0 || black.rooks > 0) &&
+      white.bishops === 0 && black.bishops === 0 &&
+      white.knights === 0 && black.knights === 0) {
+    return 'rook';
+  }
+
+  // Bishop endgames
+  if (white.queens === 0 && black.queens === 0 &&
+      white.rooks === 0 && black.rooks === 0 &&
+      (white.bishops > 0 || black.bishops > 0) &&
+      white.knights === 0 && black.knights === 0) {
+    return 'bishop';
+  }
+
+  // Knight endgames
+  if (white.queens === 0 && black.queens === 0 &&
+      white.rooks === 0 && black.rooks === 0 &&
+      white.bishops === 0 && black.bishops === 0 &&
+      (white.knights > 0 || black.knights > 0)) {
+    return 'knight';
+  }
+
+  // Minor piece endgames (bishops and/or knights, no queens or rooks)
+  if (white.queens === 0 && black.queens === 0 &&
+      white.rooks === 0 && black.rooks === 0 &&
+      (white.bishops + white.knights + black.bishops + black.knights) > 0) {
+    return 'minor_piece';
+  }
+
+  // Rook + minor piece
+  if (white.queens === 0 && black.queens === 0 &&
+      (white.rooks > 0 || black.rooks > 0) &&
+      (white.bishops + white.knights + black.bishops + black.knights) > 0) {
+    return 'rook_minor';
+  }
+
+  // Queen vs Rook type positions
+  if ((white.queens > 0 && black.rooks > 0 && black.queens === 0) ||
+      (black.queens > 0 && white.rooks > 0 && white.queens === 0)) {
+    return 'queen_rook';
+  }
+
+  // Complex endgame (multiple piece types remaining but reduced material)
+  if (totalPieces <= 10) {
+    return 'complex';
+  }
+
+  // Games with lots of pieces still on board at end (rare full-piece games)
+  return 'unknown';
+}
+
+export interface EndgameAnalysisGame {
+  id: string;
+  pgn: string;
+  result: 'win' | 'loss' | 'draw';
+  accuracy: number | null;
+  moveCount: number;
+}
+
+export function analyzeEndgames(games: EndgameAnalysisGame[]): {
+  endgameStats: Array<{
+    type: string;
+    typeName: string;
+    games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    winRate: number;
+    avgAccuracy: number;
+  }>;
+  bestEndgame: { type: string; typeName: string; winRate: number; games: number } | null;
+  worstEndgame: { type: string; typeName: string; winRate: number; games: number } | null;
+  totalEndgames: number;
+  reachedEndgameRate: number;
+} | null {
+  if (games.length < 3) return null;
+
+  const endgameMap = new Map<EndgameType, {
+    games: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    accuracySum: number;
+    accuracyCount: number;
+  }>();
+
+  let endgameCount = 0;
+
+  for (const game of games) {
+    const { white, black, moveCount } = countPiecesFromPgn(game.pgn);
+    const endgameType = classifyEndgame(white, black, moveCount);
+
+    // Only count as endgame if game went past move 25
+    if (moveCount >= 25 || endgameType !== 'mating_attack') {
+      endgameCount++;
+    }
+
+    const existing = endgameMap.get(endgameType) || {
+      games: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      accuracySum: 0,
+      accuracyCount: 0,
+    };
+
+    existing.games++;
+    if (game.result === 'win') existing.wins++;
+    else if (game.result === 'loss') existing.losses++;
+    else existing.draws++;
+
+    if (game.accuracy !== null) {
+      existing.accuracySum += game.accuracy;
+      existing.accuracyCount++;
+    }
+
+    endgameMap.set(endgameType, existing);
+  }
+
+  const endgameStats = Array.from(endgameMap.entries())
+    .map(([type, data]) => ({
+      type,
+      typeName: ENDGAME_NAMES[type],
+      games: data.games,
+      wins: data.wins,
+      losses: data.losses,
+      draws: data.draws,
+      winRate: data.games > 0 ? Math.round((data.wins / data.games) * 100) : 0,
+      avgAccuracy: data.accuracyCount > 0
+        ? Math.round((data.accuracySum / data.accuracyCount) * 10) / 10
+        : 0,
+    }))
+    .filter(s => s.type !== 'unknown')
+    .sort((a, b) => b.games - a.games);
+
+  // Find best and worst (minimum 2 games)
+  const qualifiedStats = endgameStats.filter(s => s.games >= 2);
+  const bestEndgame = qualifiedStats.length > 0
+    ? qualifiedStats.reduce((a, b) => a.winRate > b.winRate ? a : b)
+    : null;
+  const worstEndgame = qualifiedStats.length > 0
+    ? qualifiedStats.reduce((a, b) => a.winRate < b.winRate ? a : b)
+    : null;
+
+  return {
+    endgameStats,
+    bestEndgame: bestEndgame ? {
+      type: bestEndgame.type,
+      typeName: bestEndgame.typeName,
+      winRate: bestEndgame.winRate,
+      games: bestEndgame.games,
+    } : null,
+    worstEndgame: worstEndgame ? {
+      type: worstEndgame.type,
+      typeName: worstEndgame.typeName,
+      winRate: worstEndgame.winRate,
+      games: worstEndgame.games,
+    } : null,
+    totalEndgames: endgameCount,
+    reachedEndgameRate: games.length > 0
+      ? Math.round((endgameCount / games.length) * 100)
+      : 0,
+  };
+}
