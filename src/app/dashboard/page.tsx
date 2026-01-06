@@ -10,6 +10,7 @@ import { GamesList } from '@/components/dashboard/GamesList';
 import { RatingChart } from '@/components/charts/RatingChart';
 import { OpeningStatsChart } from '@/components/charts/OpeningStatsChart';
 import { MistakeHeatmap } from '@/components/charts/MistakeHeatmap';
+import { PhaseStatsChart } from '@/components/charts/PhaseStatsChart';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
 
 function DashboardContent() {
@@ -215,6 +216,13 @@ function DashboardContent() {
                 </div>
               )}
             </div>
+
+            {stats && stats.phaseStats && stats.phaseStats.length > 0 && (
+              <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Performance by Phase</h2>
+                <PhaseStatsChart data={stats.phaseStats} />
+              </div>
+            )}
 
             {stats && stats.mostCommonMistakeSquares.length > 0 && (
               <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">

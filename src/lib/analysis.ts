@@ -271,3 +271,80 @@ export function aggregateMistakeSquares(
     }))
     .sort((a, b) => b.totalErrors - a.totalErrors);
 }
+
+export function getPhase(moveNumber: number): 'opening' | 'middlegame' | 'endgame' {
+  if (moveNumber <= 15) return 'opening';
+  if (moveNumber <= 35) return 'middlegame';
+  return 'endgame';
+}
+
+export function aggregatePhaseStats(
+  moves: Array<{
+    moveNumber: number;
+    classification: string;
+    evalLoss: number;
+  }>
+): Array<{
+  phase: 'opening' | 'middlegame' | 'endgame';
+  accuracy: number;
+  acpl: number;
+  blunders: number;
+  mistakes: number;
+  inaccuracies: number;
+  totalMoves: number;
+}> {
+  const phases: ('opening' | 'middlegame' | 'endgame')[] = ['opening', 'middlegame', 'endgame'];
+
+  const phaseData = new Map<string, {
+    totalEvalLoss: number;
+    blunders: number;
+    mistakes: number;
+    inaccuracies: number;
+    totalMoves: number;
+  }>();
+
+  // Initialize phases
+  for (const phase of phases) {
+    phaseData.set(phase, {
+      totalEvalLoss: 0,
+      blunders: 0,
+      mistakes: 0,
+      inaccuracies: 0,
+      totalMoves: 0,
+    });
+  }
+
+  // Aggregate move data by phase
+  for (const move of moves) {
+    const phase = getPhase(move.moveNumber);
+    const data = phaseData.get(phase)!;
+
+    data.totalMoves++;
+    data.totalEvalLoss += move.evalLoss;
+
+    if (move.classification === 'blunder' || move.classification === 'missed_mate') {
+      data.blunders++;
+    } else if (move.classification === 'mistake') {
+      data.mistakes++;
+    } else if (move.classification === 'inaccuracy') {
+      data.inaccuracies++;
+    }
+  }
+
+  // Calculate accuracy and ACPL for each phase
+  return phases.map((phase) => {
+    const data = phaseData.get(phase)!;
+    const acpl = data.totalMoves > 0 ? (data.totalEvalLoss / data.totalMoves) * 100 : 0;
+    const accuracy = Math.max(0, 100 - acpl * 0.5);
+
+    return {
+      phase,
+      accuracy: Math.round(accuracy * 10) / 10,
+      acpl: Math.round(acpl * 10) / 10,
+      blunders: data.blunders,
+      mistakes: data.mistakes,
+      inaccuracies: data.inaccuracies,
+      totalMoves: data.totalMoves,
+    };
+  });
+}

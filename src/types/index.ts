@@ -117,6 +117,16 @@ export interface RatingHistoryPoint {
   gameId: string;
 }
 
+export interface PhaseStats {
+  phase: 'opening' | 'middlegame' | 'endgame';
+  accuracy: number;
+  acpl: number;
+  blunders: number;
+  mistakes: number;
+  inaccuracies: number;
+  totalMoves: number;
+}
+
 export interface UserStats {
   totalGames: number;
   analyzedGames: number;
@@ -128,6 +138,7 @@ export interface UserStats {
   mostCommonMistakeSquares: SquareHeatmapData[];
   openingStats: OpeningStats[];
   ratingHistory: RatingHistoryPoint[];
+  phaseStats: PhaseStats[];
 }
 
 export interface AnalysisProgress {

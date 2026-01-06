@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { aggregateOpeningStats, aggregateMistakeSquares } from '@/lib/analysis';
+import { aggregateOpeningStats, aggregateMistakeSquares, aggregatePhaseStats } from '@/lib/analysis';
 import { UserStats } from '@/types';
 
 export async function GET(
@@ -70,6 +70,14 @@ export async function GET(
       }))
     );
 
+    const phaseStats = aggregatePhaseStats(
+      allMoves.map((m) => ({
+        moveNumber: m.moveNumber,
+        classification: m.classification,
+        evalLoss: m.evalLoss,
+      }))
+    );
+
     const ratingHistory = user.games
       .filter((g) => g.playerRating)
       .map((g) => ({
@@ -96,6 +104,7 @@ export async function GET(
       mostCommonMistakeSquares: mistakeSquares.slice(0, 10),
       openingStats: openingStats.slice(0, 15),
       ratingHistory,
+      phaseStats,
     };
 
     return NextResponse.json(stats);
