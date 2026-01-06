@@ -726,3 +726,146 @@ export function generateWeaknessReport(input: WeaknessAnalysisInput): {
     gamesAnalyzed: input.totalGames,
   };
 }
+
+export interface TiltAnalysisGame {
+  id: string;
+  result: 'win' | 'loss' | 'draw';
+  accuracy: number | null;
+  blunders: number;
+  playedAt: Date;
+}
+
+export function analyzeTilt(games: TiltAnalysisGame[]): {
+  afterWin: { games: number; avgAccuracy: number; winRate: number; blunders: number };
+  afterLoss: { games: number; avgAccuracy: number; winRate: number; blunders: number };
+  afterDraw: { games: number; avgAccuracy: number; winRate: number; blunders: number };
+  accuracyDrop: number;
+  winRateDrop: number;
+  tiltScore: number;
+  isTilting: boolean;
+  streakStats: {
+    currentStreak: number;
+    longestWinStreak: number;
+    longestLoseStreak: number;
+    performanceAfterStreak: number;
+  };
+} | null {
+  if (games.length < 3) return null;
+
+  // Sort games by date (oldest first to analyze sequential performance)
+  const sortedGames = [...games].sort(
+    (a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime()
+  );
+
+  const afterWin: TiltAnalysisGame[] = [];
+  const afterLoss: TiltAnalysisGame[] = [];
+  const afterDraw: TiltAnalysisGame[] = [];
+  const afterLoseStreak: TiltAnalysisGame[] = []; // Games after 2+ consecutive losses
+
+  let currentStreak = 0;
+  let longestWinStreak = 0;
+  let longestLoseStreak = 0;
+  let tempWinStreak = 0;
+  let tempLoseStreak = 0;
+
+  for (let i = 1; i < sortedGames.length; i++) {
+    const prevGame = sortedGames[i - 1];
+    const currGame = sortedGames[i];
+
+    // Track what happened after previous result
+    if (prevGame.result === 'win') {
+      afterWin.push(currGame);
+      tempWinStreak++;
+      tempLoseStreak = 0;
+    } else if (prevGame.result === 'loss') {
+      afterLoss.push(currGame);
+      tempLoseStreak++;
+      tempWinStreak = 0;
+
+      // Track games after losing streaks (2+ losses)
+      if (tempLoseStreak >= 2) {
+        afterLoseStreak.push(currGame);
+      }
+    } else {
+      afterDraw.push(currGame);
+      tempWinStreak = 0;
+      tempLoseStreak = 0;
+    }
+
+    longestWinStreak = Math.max(longestWinStreak, tempWinStreak);
+    longestLoseStreak = Math.max(longestLoseStreak, tempLoseStreak);
+  }
+
+  // Calculate current streak from most recent games
+  const recentGames = sortedGames.slice(-10).reverse();
+  for (const game of recentGames) {
+    if (currentStreak === 0) {
+      currentStreak = game.result === 'win' ? 1 : game.result === 'loss' ? -1 : 0;
+    } else if (currentStreak > 0 && game.result === 'win') {
+      currentStreak++;
+    } else if (currentStreak < 0 && game.result === 'loss') {
+      currentStreak--;
+    } else {
+      break;
+    }
+  }
+
+  // Helper to calculate stats for a group of games
+  const calcStats = (gameList: TiltAnalysisGame[]) => {
+    const analyzed = gameList.filter(g => g.accuracy !== null);
+    const wins = gameList.filter(g => g.result === 'win').length;
+    const totalBlunders = gameList.reduce((sum, g) => sum + g.blunders, 0);
+
+    return {
+      games: gameList.length,
+      avgAccuracy: analyzed.length > 0
+        ? Math.round((analyzed.reduce((sum, g) => sum + (g.accuracy || 0), 0) / analyzed.length) * 10) / 10
+        : 0,
+      winRate: gameList.length > 0 ? Math.round((wins / gameList.length) * 100) : 0,
+      blunders: totalBlunders,
+    };
+  };
+
+  const afterWinStats = calcStats(afterWin);
+  const afterLossStats = calcStats(afterLoss);
+  const afterDrawStats = calcStats(afterDraw);
+
+  // Calculate accuracy and win rate drops
+  const accuracyDrop = afterWinStats.avgAccuracy - afterLossStats.avgAccuracy;
+  const winRateDrop = afterWinStats.winRate - afterLossStats.winRate;
+
+  // Calculate tilt score (0-100, higher = more tilted)
+  // Factors: accuracy drop, win rate drop, blunder increase
+  let tiltScore = 0;
+  if (afterWin.length >= 2 && afterLoss.length >= 2) {
+    tiltScore += Math.max(0, accuracyDrop) * 2; // Up to ~40 points
+    tiltScore += Math.max(0, winRateDrop) * 0.5; // Up to ~25 points
+
+    const blunderRateAfterWin = afterWin.length > 0 ? afterWinStats.blunders / afterWin.length : 0;
+    const blunderRateAfterLoss = afterLoss.length > 0 ? afterLossStats.blunders / afterLoss.length : 0;
+    const blunderIncrease = blunderRateAfterLoss - blunderRateAfterWin;
+    tiltScore += Math.max(0, blunderIncrease) * 20; // Up to ~20 points
+  }
+  tiltScore = Math.min(100, Math.round(tiltScore));
+
+  // Performance after losing streaks
+  const streakPerformance = afterLoseStreak.length > 0
+    ? calcStats(afterLoseStreak).avgAccuracy
+    : afterLossStats.avgAccuracy;
+
+  return {
+    afterWin: afterWinStats,
+    afterLoss: afterLossStats,
+    afterDraw: afterDrawStats,
+    accuracyDrop: Math.round(accuracyDrop * 10) / 10,
+    winRateDrop: Math.round(winRateDrop * 10) / 10,
+    tiltScore,
+    isTilting: tiltScore >= 25 || accuracyDrop >= 5,
+    streakStats: {
+      currentStreak,
+      longestWinStreak: longestWinStreak + 1, // +1 because we count from 0
+      longestLoseStreak: longestLoseStreak + 1,
+      performanceAfterStreak: streakPerformance,
+    },
+  };
+}

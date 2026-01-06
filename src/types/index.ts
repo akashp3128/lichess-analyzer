@@ -165,6 +165,7 @@ export interface UserStats {
   phaseStats: PhaseStats[];
   timeTroubleStats: TimeTroubleStats | null;
   weaknessReport: WeaknessReport;
+  tiltStats: TiltStats | null;
 }
 
 export interface AnalysisProgress {
@@ -190,4 +191,35 @@ export interface WeaknessReport {
   strengths: WeaknessInsight[];
   overallScore: number;
   gamesAnalyzed: number;
+}
+
+export interface TiltStats {
+  afterWin: {
+    games: number;
+    avgAccuracy: number;
+    winRate: number;
+    blunders: number;
+  };
+  afterLoss: {
+    games: number;
+    avgAccuracy: number;
+    winRate: number;
+    blunders: number;
+  };
+  afterDraw: {
+    games: number;
+    avgAccuracy: number;
+    winRate: number;
+    blunders: number;
+  };
+  accuracyDrop: number; // afterLoss.avgAccuracy - afterWin.avgAccuracy
+  winRateDrop: number;
+  tiltScore: number; // 0-100, higher = more affected by losses
+  isTilting: boolean;
+  streakStats: {
+    currentStreak: number; // positive = wins, negative = losses
+    longestWinStreak: number;
+    longestLoseStreak: number;
+    performanceAfterStreak: number; // accuracy after 2+ losses in a row
+  };
 }
