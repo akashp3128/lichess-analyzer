@@ -497,3 +497,232 @@ export function aggregateTimeTroubleStats(
     timeTroubleThreshold: 60, // seconds (10% of 600s = 60s for 10+0)
   };
 }
+
+export interface WeaknessAnalysisInput {
+  phaseStats: Array<{
+    phase: 'opening' | 'middlegame' | 'endgame';
+    accuracy: number;
+    blunders: number;
+    mistakes: number;
+    totalMoves: number;
+  }>;
+  timeTroubleStats: {
+    normalAccuracy: number;
+    timeTroubleAccuracy: number;
+    accuracyDrop: number;
+    timeTroubleBlunders: number;
+    normalBlunders: number;
+    timeTroubleMoves: number;
+    normalMoves: number;
+  } | null;
+  openingStats: Array<{
+    name: string;
+    eco: string;
+    games: number;
+    winRate: number;
+    losses: number;
+  }>;
+  mistakeSquares: Array<{
+    square: string;
+    totalErrors: number;
+    byPiece?: Array<{ piece: string; total: number }>;
+  }>;
+  totalGames: number;
+  avgAccuracy: number;
+  totalBlunders: number;
+  totalMistakes: number;
+}
+
+export function generateWeaknessReport(input: WeaknessAnalysisInput): {
+  topWeaknesses: Array<{
+    category: string;
+    title: string;
+    description: string;
+    impact: number;
+    frequency: number;
+    suggestion: string;
+  }>;
+  strengths: Array<{
+    category: string;
+    title: string;
+    description: string;
+    impact: number;
+  }>;
+  overallScore: number;
+  gamesAnalyzed: number;
+} {
+  const weaknesses: Array<{
+    category: string;
+    title: string;
+    description: string;
+    impact: number;
+    frequency: number;
+    suggestion: string;
+  }> = [];
+
+  const strengths: Array<{
+    category: string;
+    title: string;
+    description: string;
+    impact: number;
+  }> = [];
+
+  // Analyze phase weaknesses
+  if (input.phaseStats.length > 0) {
+    const sortedPhases = [...input.phaseStats].sort((a, b) => a.accuracy - b.accuracy);
+    const weakestPhase = sortedPhases[0];
+    const strongestPhase = sortedPhases[sortedPhases.length - 1];
+
+    if (weakestPhase && weakestPhase.accuracy < 75) {
+      const phaseNames = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' };
+      const suggestions = {
+        opening: 'Study your main opening lines and focus on the first 10-15 moves.',
+        middlegame: 'Practice tactical puzzles and focus on piece coordination.',
+        endgame: 'Study basic endgame patterns: King+Pawn, Rook endings, and opposition.',
+      };
+
+      weaknesses.push({
+        category: 'phase_weakness',
+        title: `Weak ${phaseNames[weakestPhase.phase]}`,
+        description: `Your ${phaseNames[weakestPhase.phase].toLowerCase()} accuracy is ${weakestPhase.accuracy}% with ${weakestPhase.blunders} blunders.`,
+        impact: Math.round((80 - weakestPhase.accuracy) * 1.2),
+        frequency: weakestPhase.totalMoves,
+        suggestion: suggestions[weakestPhase.phase],
+      });
+    }
+
+    if (strongestPhase && strongestPhase.accuracy >= 80) {
+      const phaseNames = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' };
+      strengths.push({
+        category: 'phase_strength',
+        title: `Strong ${phaseNames[strongestPhase.phase]}`,
+        description: `Your ${phaseNames[strongestPhase.phase].toLowerCase()} accuracy is ${strongestPhase.accuracy}%.`,
+        impact: Math.round(strongestPhase.accuracy - 70),
+      });
+    }
+  }
+
+  // Analyze time trouble
+  if (input.timeTroubleStats && input.timeTroubleStats.accuracyDrop > 5) {
+    const blunderRate = input.timeTroubleStats.timeTroubleMoves > 0
+      ? (input.timeTroubleStats.timeTroubleBlunders / input.timeTroubleStats.timeTroubleMoves) * 100
+      : 0;
+
+    weaknesses.push({
+      category: 'time_management',
+      title: 'Time Trouble Issues',
+      description: `Your accuracy drops ${input.timeTroubleStats.accuracyDrop}% in time trouble with a ${blunderRate.toFixed(1)}% blunder rate.`,
+      impact: Math.round(input.timeTroubleStats.accuracyDrop * 2),
+      frequency: input.timeTroubleStats.timeTroubleMoves,
+      suggestion: 'Practice faster calculation. Consider playing increment games to improve time management.',
+    });
+  } else if (input.timeTroubleStats && input.timeTroubleStats.accuracyDrop <= 0) {
+    strengths.push({
+      category: 'time_management',
+      title: 'Good Under Pressure',
+      description: 'You maintain accuracy even in time trouble situations.',
+      impact: 15,
+    });
+  }
+
+  // Analyze opening performance
+  const badOpenings = input.openingStats.filter(o => o.games >= 3 && o.winRate < 35);
+  if (badOpenings.length > 0) {
+    const worstOpening = badOpenings.sort((a, b) => a.winRate - b.winRate)[0];
+    weaknesses.push({
+      category: 'opening_theory',
+      title: 'Struggling Opening',
+      description: `${worstOpening.name} has only ${worstOpening.winRate}% win rate over ${worstOpening.games} games.`,
+      impact: Math.round((50 - worstOpening.winRate) * 0.8),
+      frequency: worstOpening.games,
+      suggestion: `Consider studying ${worstOpening.name} theory or switching to a different opening.`,
+    });
+  }
+
+  const goodOpenings = input.openingStats.filter(o => o.games >= 3 && o.winRate >= 60);
+  if (goodOpenings.length > 0) {
+    const bestOpening = goodOpenings.sort((a, b) => b.winRate - a.winRate)[0];
+    strengths.push({
+      category: 'opening_theory',
+      title: 'Strong Opening',
+      description: `${bestOpening.name} with ${bestOpening.winRate}% win rate.`,
+      impact: Math.round((bestOpening.winRate - 50) * 0.5),
+    });
+  }
+
+  // Analyze piece-specific mistakes
+  if (input.mistakeSquares.length > 0) {
+    const pieceErrors = new Map<string, number>();
+    for (const sq of input.mistakeSquares) {
+      if (sq.byPiece) {
+        for (const p of sq.byPiece) {
+          pieceErrors.set(p.piece, (pieceErrors.get(p.piece) || 0) + p.total);
+        }
+      }
+    }
+
+    const sortedPieces = Array.from(pieceErrors.entries()).sort((a, b) => b[1] - a[1]);
+    if (sortedPieces.length > 0) {
+      const [worstPiece, errorCount] = sortedPieces[0];
+      const pieceNames: Record<string, string> = {
+        P: 'Pawn', N: 'Knight', B: 'Bishop', R: 'Rook', Q: 'Queen', K: 'King'
+      };
+      const pieceSuggestions: Record<string, string> = {
+        P: 'Review pawn structure concepts and avoid creating weaknesses.',
+        N: 'Knights need outposts. Avoid placing them on the rim.',
+        B: 'Keep bishops on open diagonals. Watch for blocked pawns.',
+        R: 'Rooks belong on open files. Connect them early.',
+        Q: 'Avoid early queen moves. Protect your queen from attacks.',
+        K: 'Prioritize king safety. Castle early in most games.',
+      };
+
+      if (errorCount >= 3) {
+        weaknesses.push({
+          category: 'piece_handling',
+          title: `${pieceNames[worstPiece] || worstPiece} Mistakes`,
+          description: `${errorCount} errors with your ${(pieceNames[worstPiece] || worstPiece).toLowerCase()}s.`,
+          impact: Math.min(40, errorCount * 5),
+          frequency: errorCount,
+          suggestion: pieceSuggestions[worstPiece] || 'Focus on this piece type in your training.',
+        });
+      }
+    }
+  }
+
+  // Analyze blunder rate
+  const blunderRate = input.totalGames > 0 ? input.totalBlunders / input.totalGames : 0;
+  if (blunderRate >= 2) {
+    weaknesses.push({
+      category: 'tactical_awareness',
+      title: 'High Blunder Rate',
+      description: `Averaging ${blunderRate.toFixed(1)} blunders per game.`,
+      impact: Math.min(50, Math.round(blunderRate * 15)),
+      frequency: input.totalBlunders,
+      suggestion: 'Do tactical puzzles daily. Use the "blunder check" before each move.',
+    });
+  } else if (blunderRate < 0.5 && input.totalGames >= 5) {
+    strengths.push({
+      category: 'tactical_awareness',
+      title: 'Low Blunder Rate',
+      description: `Only ${blunderRate.toFixed(1)} blunders per game on average.`,
+      impact: 20,
+    });
+  }
+
+  // Calculate overall score
+  const baseScore = Math.min(100, input.avgAccuracy);
+  const weaknessPenalty = weaknesses.reduce((sum, w) => sum + w.impact * 0.3, 0);
+  const strengthBonus = strengths.reduce((sum, s) => sum + s.impact * 0.2, 0);
+  const overallScore = Math.max(0, Math.min(100, Math.round(baseScore - weaknessPenalty + strengthBonus)));
+
+  // Sort by impact
+  weaknesses.sort((a, b) => b.impact - a.impact);
+  strengths.sort((a, b) => b.impact - a.impact);
+
+  return {
+    topWeaknesses: weaknesses.slice(0, 3),
+    strengths: strengths.slice(0, 3),
+    overallScore,
+    gamesAnalyzed: input.totalGames,
+  };
+}

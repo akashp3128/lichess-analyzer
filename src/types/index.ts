@@ -164,6 +164,7 @@ export interface UserStats {
   ratingHistory: RatingHistoryPoint[];
   phaseStats: PhaseStats[];
   timeTroubleStats: TimeTroubleStats | null;
+  weaknessReport: WeaknessReport;
 }
 
 export interface AnalysisProgress {
@@ -173,4 +174,20 @@ export interface AnalysisProgress {
   status: 'pending' | 'analyzing' | 'complete' | 'error';
   currentMove?: number;
   totalMoves?: number;
+}
+
+export interface WeaknessInsight {
+  category: string;
+  title: string;
+  description: string;
+  impact: number;
+  frequency?: number;
+  suggestion?: string;
+}
+
+export interface WeaknessReport {
+  topWeaknesses: WeaknessInsight[];
+  strengths: WeaknessInsight[];
+  overallScore: number;
+  gamesAnalyzed: number;
 }

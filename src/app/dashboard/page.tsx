@@ -12,6 +12,7 @@ import { OpeningStatsChart } from '@/components/charts/OpeningStatsChart';
 import { MistakeHeatmap } from '@/components/charts/MistakeHeatmap';
 import { PhaseStatsChart } from '@/components/charts/PhaseStatsChart';
 import { TimeTroubleChart } from '@/components/charts/TimeTroubleChart';
+import { WeaknessReport } from '@/components/charts/WeaknessReport';
 import { AnalysisRunner } from '@/components/dashboard/AnalysisRunner';
 
 function DashboardContent() {
@@ -201,6 +202,13 @@ function DashboardContent() {
             )}
 
             {stats && <StatsOverview stats={stats} />}
+
+            {stats && stats.weaknessReport && (
+              <div className="rounded-xl border border-slate-700 bg-slate-800 p-6">
+                <h2 className="mb-4 text-lg font-semibold">Improvement Insights</h2>
+                <WeaknessReport data={stats.weaknessReport} />
+              </div>
+            )}
 
             <div className="grid gap-6 lg:grid-cols-2">
               {stats && stats.ratingHistory.length > 0 && (

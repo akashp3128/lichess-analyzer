@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { aggregateOpeningStats, aggregateMistakeSquares, aggregatePhaseStats, aggregateTimeTroubleStats } from '@/lib/analysis';
+import { aggregateOpeningStats, aggregateMistakeSquares, aggregatePhaseStats, aggregateTimeTroubleStats, generateWeaknessReport } from '@/lib/analysis';
 import { UserStats } from '@/types';
 
 export async function GET(
@@ -96,13 +96,25 @@ export async function GET(
       }))
       .reverse();
 
+    const avgAccuracy = analyzedGames.length > 0
+      ? Math.round((totalAccuracy / analyzedGames.length) * 10) / 10
+      : 0;
+
+    const weaknessReport = generateWeaknessReport({
+      phaseStats,
+      timeTroubleStats,
+      openingStats,
+      mistakeSquares,
+      totalGames: user.games.length,
+      avgAccuracy,
+      totalBlunders,
+      totalMistakes,
+    });
+
     const stats: UserStats = {
       totalGames: user.games.length,
       analyzedGames: analyzedGames.length,
-      avgAccuracy:
-        analyzedGames.length > 0
-          ? Math.round((totalAccuracy / analyzedGames.length) * 10) / 10
-          : 0,
+      avgAccuracy,
       avgAcpl:
         analyzedGames.length > 0
           ? Math.round((totalAcpl / analyzedGames.length) * 10) / 10
@@ -115,6 +127,7 @@ export async function GET(
       ratingHistory,
       phaseStats,
       timeTroubleStats,
+      weaknessReport,
     };
 
     return NextResponse.json(stats);
