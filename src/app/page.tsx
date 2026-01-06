@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Crown } from 'lucide-react';
+import Link from 'next/link';
+import { Crown, Target } from 'lucide-react';
 
 export default function Home() {
   const [username, setUsername] = useState('');
@@ -108,6 +109,19 @@ export default function Home() {
 
         <div className="mt-6 text-center text-sm text-slate-500">
           <p>Analyzes your last 20 rated games</p>
+        </div>
+
+        <div className="mt-8 border-t border-slate-700 pt-8">
+          <Link
+            href="/scout"
+            className="flex items-center justify-center gap-2 rounded-lg border border-slate-600 bg-slate-800/50 px-4 py-3 text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+          >
+            <Target className="h-5 w-5" />
+            Scout an Opponent
+          </Link>
+          <p className="mt-2 text-center text-xs text-slate-500">
+            Analyze opponent's openings and weaknesses before a game
+          </p>
         </div>
       </div>
     </div>
