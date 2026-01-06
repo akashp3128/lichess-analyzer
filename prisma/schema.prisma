@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id
+  username      String   @unique
+  rating        Int?
+  lastSyncedAt  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  games         Game[]
+}
+
+model Game {
+  id            String    @id
+  lichessId     String    @unique
+  pgn           String
+  white         String
+  black         String
+  result        String
+  timeControl   String
+  perfType      String
+  opening       String?
+  openingEco    String?
+  playerColor   String
+  playerRating  Int?
+  opponentRating Int?
+  playedAt      DateTime
+  createdAt     DateTime  @default(now())
+
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  analysis      Analysis?
+  moves         MoveAnalysis[]
+
+  @@index([userId])
+  @@index([playedAt])
+}
+
+model Analysis {
+  id              String   @id @default(cuid())
+  accuracy        Float
+  acpl            Float
+  bestMoves       Int
+  goodMoves       Int
+  inaccuracies    Int
+  mistakes        Int
+  blunders        Int
+  missedMates     Int
+  timeInTrouble   Int
+  avgMoveTime     Float?
+  analyzedAt      DateTime @default(now())
+
+  gameId          String   @unique
+  game            Game     @relation(fields: [gameId], references: [id])
+}
+
+model MoveAnalysis {
+  id              String   @id @default(cuid())
+  moveNumber      Int
+  move            String
+  isWhite         Boolean
+  evaluation      Float
+  bestMove        String?
+  evalLoss        Float
+  classification  String
+  square          String
+  timeSpent       Float?
+
+  gameId          String
+  game            Game     @relation(fields: [gameId], references: [id])
+
+  @@index([gameId])
+  @@index([square])
+}
