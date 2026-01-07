@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, RefreshCw, Play, CheckCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Play, CheckCircle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { GameWithAnalysis, UserStats, AnalysisProgress } from '@/types';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
@@ -30,6 +30,7 @@ function DashboardContent() {
   const [error, setError] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   // Use ref to store games for analysis to prevent re-renders
   const gamesToAnalyzeRef = useRef<GameWithAnalysis[]>([]);
@@ -83,6 +84,48 @@ function DashboardContent() {
     setAnalyzing(true);
   }, [unanalyzedGames]);
 
+  const handleClearAndReanalyze = useCallback(async () => {
+    if (!username || clearing || analyzing) return;
+
+    const confirmed = window.confirm(
+      'This will clear all existing analysis data and re-analyze all games with the corrected algorithm. Continue?'
+    );
+    if (!confirmed) return;
+
+    setClearing(true);
+    setError('');
+
+    try {
+      // Clear existing analysis
+      const clearRes = await fetch(`/api/analysis/clear/${encodeURIComponent(username)}`, {
+        method: 'DELETE',
+      });
+
+      if (!clearRes.ok) {
+        const data = await clearRes.json();
+        throw new Error(data.error || 'Failed to clear analysis');
+      }
+
+      // Fetch fresh games data
+      const gamesRes = await fetch(`/api/games?username=${encodeURIComponent(username)}&max=20`);
+      const gamesData = await gamesRes.json();
+
+      if (!gamesRes.ok) throw new Error(gamesData.error);
+
+      // Update state with cleared games
+      setGames(gamesData.games);
+      setStats(null);
+
+      // Start analysis on all games (they now have no analysis)
+      gamesToAnalyzeRef.current = gamesData.games;
+      setClearing(false);
+      setAnalyzing(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clear analysis');
+      setClearing(false);
+    }
+  }, [username, clearing, analyzing]);
+
   if (!username) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -110,6 +153,16 @@ function DashboardContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {analyzedCount > 0 && (
+              <button
+                onClick={handleClearAndReanalyze}
+                disabled={clearing || analyzing || loading}
+                className="flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm text-red-400 hover:bg-red-500/30 disabled:opacity-50"
+              >
+                <Trash2 className={`h-4 w-4 ${clearing ? 'animate-pulse' : ''}`} />
+                {clearing ? 'Clearing...' : 'Clear & Re-analyze'}
+              </button>
+            )}
             <button
               onClick={fetchData}
               disabled={loading}

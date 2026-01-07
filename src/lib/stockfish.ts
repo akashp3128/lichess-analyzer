@@ -107,7 +107,10 @@ export class StockfishEngine {
       } else if (scoreType === 'mate') {
         this.currentEval.isMate = true;
         this.currentEval.mateIn = scoreValue;
-        this.currentEval.evaluation = scoreValue > 0 ? 10000 : -10000;
+        // Cap mate evaluation at +/-15 pawns to prevent evalLoss corruption
+        // Shorter mates are "better" so use inverse: mate in 1 = 15, mate in 10 = 6
+        const mateValue = Math.max(6, 15 - Math.abs(scoreValue) + 1);
+        this.currentEval.evaluation = scoreValue > 0 ? mateValue : -mateValue;
       }
     }
   }

@@ -157,7 +157,9 @@ export async function analyzeGame(
       // Before move: it's player's turn, so eval is from player's POV
       // After move: it's opponent's turn, so we negate to get player's POV
       // Formula: evalLoss = evalBefore - (-evalAfter) = evalBefore + evalAfter
-      const evalLoss = Math.max(0, evalBefore.evaluation + evalAfter.evaluation);
+      // Cap at 15 pawns to handle edge cases with mate transitions
+      const rawEvalLoss = evalBefore.evaluation + evalAfter.evaluation;
+      const evalLoss = Math.min(15, Math.max(0, rawEvalLoss));
       totalEvalLoss += evalLoss;
       playerMoveCount++;
 
