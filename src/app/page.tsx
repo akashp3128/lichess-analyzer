@@ -91,7 +91,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--color-surface-900)]">
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0a0f]">
       {/* Background effects */}
       <div className="absolute inset-0 grid-pattern" />
       <div className="absolute inset-0 spotlight" />

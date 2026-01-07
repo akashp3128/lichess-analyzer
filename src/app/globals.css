@@ -200,10 +200,10 @@ body {
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
-.animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
-.animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
-.animate-scale-in { animation: scale-in 0.3s ease-out forwards; }
-.animate-slide-in-right { animation: slide-in-right 0.4s ease-out forwards; }
+.animate-fade-in { animation: fade-in 0.5s ease-out both; }
+.animate-fade-in-up { animation: fade-in-up 0.6s ease-out both; }
+.animate-scale-in { animation: scale-in 0.3s ease-out both; }
+.animate-slide-in-right { animation: slide-in-right 0.4s ease-out both; }
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
