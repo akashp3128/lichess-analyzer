@@ -1,0 +1,64 @@
+/* Global theme tokens for glassy UI */
+:root {
+  --bg: #f8f9fb;
+  --text: #0f172a;
+  --muted: #64748b;
+  --card: rgba(255,255,255,0.75);
+  --border: rgba(0,0,0,0.08);
+  --shadow: 0 10px 25px rgba(0,0,0,.08);
+}
+
+/* Dark / obsidian glass look */
+.theme-dark {
+  --bg: #0b0e12;
+  --text: #e5e7eb;
+  --muted: #aeb7c6;
+  --card: rgba(12,14,18,0.75);
+  --border: rgba(255,255,255,0.15);
+  --shadow: 0 14px 28px rgba(0,0,0,.45);
+  background-color: #0b0e12;
+}
+
+html, body, #__next {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* Glass card base (neutral) */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+
+/* Dark glass variation (obsidian) */
+.glass-dark {
+  background: rgba(12,14,18,.70);
+  border: 1px solid rgba(255,255,255,.15);
+  color: #e6e6e6;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  backdrop-filter: saturate(180%) blur(10px);
+}
+
+/* Obsidian-specific override for App Dark theme */
+.theme-dark .glass {
+  background: rgba(12,14,18,.75);
+  border-color: rgba(255,255,255,.15);
+  color: #e6e6e6;
+}
+
+/* utility */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+
+/* utility */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
