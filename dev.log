@@ -1,0 +1,13 @@
+
+> lichess-analyzer@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.0.0.81:3000
+- Environments: .env
+
+✓ Starting...
+Error: > `pages` and `app` directories should be under the same folder
+    at ignore-listed frames
+[?25h

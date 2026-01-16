@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id            String   @id
-  username      String   @unique
+  id            String         @id
+  username      String         @unique
   rating        Int?
-  lastSyncedAt  DateTime @default(now())
-  createdAt     DateTime @default(now())
+  lastSyncedAt  DateTime       @default(now())
+  createdAt     DateTime       @default(now())
   games         Game[]
+  subscription  Subscription?
 }
 
 model Game {
-  id            String    @id
-  lichessId     String    @unique
+  id            String        @id
+  lichessId     String        @unique
   pgn           String
   white         String
   black         String
@@ -31,10 +32,10 @@ model Game {
   playerRating  Int?
   opponentRating Int?
   playedAt      DateTime
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime      @default(now())
 
   userId        String
-  user          User      @relation(fields: [userId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
   analysis      Analysis?
   moves         MoveAnalysis[]
 
@@ -83,4 +84,38 @@ model MoveAnalysis {
   @@index([square])
   @@index([piece])
   @@index([classification])
+}
+
+// SaaS: Plans and Subscriptions
+model Plan {
+  id                   String @id @default(cuid())
+  name                 String
+  slug                 String @unique
+  monthlyPrice         Int    // in cents
+  yearlyPrice          Int    // in cents
+  maxAnalysesPerMonth  Int
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  subscriptions        Subscription[]
+}
+
+model Subscription {
+  id                    String     @id @default(cuid())
+  userId                String     @unique
+  user                  User       @relation(fields: [userId], references: [id])
+  planId                String
+  plan                  Plan       @relation(fields: [planId], references: [id])
+  status                String     @default("active")
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  analysesUsed          Int        @default(0)
+  monthlyResetAt        DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([planId])
 }
